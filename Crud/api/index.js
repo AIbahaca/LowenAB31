@@ -2,19 +2,19 @@ import express from "express";
 import mongoose from "mongoose";
 
 const app = express();
-
-// Middleware
 app.use(express.json());
 
-// 🔥 Conexión a MongoDB Atlas
-if (!mongoose.connections[0].readyState) {
-  mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  });
+// 🔥 Conexión optimizada (SIN opciones viejas)
+let isConnected = false;
+
+async function connectDB() {
+  if (isConnected) return;
+
+  await mongoose.connect(process.env.MONGO_URI);
+  isConnected = true;
 }
 
-// Modelo
+// 📦 Modelo
 const TodoSchema = new mongoose.Schema({
   texto: { type: String, required: true },
   complete: { type: Boolean, default: false }
@@ -25,6 +25,7 @@ const Todo = mongoose.models.Todo || mongoose.model("Todo", TodoSchema);
 // 📌 Obtener todas las tareas
 app.get("/getAll", async (req, res) => {
   try {
+    await connectDB();
     const data = await Todo.find();
     res.json(data);
   } catch (error) {
@@ -35,6 +36,7 @@ app.get("/getAll", async (req, res) => {
 // 📌 Agregar tarea
 app.post("/add", async (req, res) => {
   try {
+    await connectDB();
     const todo = new Todo({
       texto: req.body.texto,
       complete: false
@@ -47,9 +49,10 @@ app.post("/add", async (req, res) => {
   }
 });
 
-// 📌 Completar / cambiar estado
+// 📌 Cambiar estado
 app.get("/complete/:id/:estado", async (req, res) => {
   try {
+    await connectDB();
     await Todo.findByIdAndUpdate(req.params.id, {
       complete: req.params.estado === "true"
     });
@@ -62,6 +65,7 @@ app.get("/complete/:id/:estado", async (req, res) => {
 // 📌 Eliminar tarea
 app.get("/delete/:id", async (req, res) => {
   try {
+    await connectDB();
     await Todo.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (error) {
