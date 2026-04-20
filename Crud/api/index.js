@@ -1,76 +1,66 @@
-import express from "express";
 import mongoose from "mongoose";
 
-const app = express();
-app.use(express.json());
-
-// 🔥 Conexión optimizada (SIN opciones viejas)
+// conexión global
 let isConnected = false;
 
 async function connectDB() {
   if (isConnected) return;
-
   await mongoose.connect(process.env.MONGO_URI);
   isConnected = true;
 }
 
-// 📦 Modelo
+// modelo
 const TodoSchema = new mongoose.Schema({
-  texto: { type: String, required: true },
-  complete: { type: Boolean, default: false }
+  texto: String,
+  complete: Boolean
 });
 
 const Todo = mongoose.models.Todo || mongoose.model("Todo", TodoSchema);
 
-// 📌 Obtener todas las tareas
-app.get("/getAll", async (req, res) => {
+// handler principal (Vercel)
+export default async function handler(req, res) {
   try {
     await connectDB();
-    const data = await Todo.find();
-    res.json(data);
+
+    // GET /api/getAll
+    if (req.method === "GET" && req.url.includes("getAll")) {
+      const data = await Todo.find();
+      return res.status(200).json(data);
+    }
+
+    // POST /api/add
+    if (req.method === "POST" && req.url.includes("add")) {
+      const { texto } = req.body;
+      const todo = new Todo({ texto, complete: false });
+      await todo.save();
+      return res.status(200).json({ success: true });
+    }
+
+    // GET /api/complete/:id/:estado
+    if (req.method === "GET" && req.url.includes("complete")) {
+      const parts = req.url.split("/");
+      const id = parts[3];
+      const estado = parts[4];
+
+      await Todo.findByIdAndUpdate(id, {
+        complete: estado === "true"
+      });
+
+      return res.status(200).json({ success: true });
+    }
+
+    // GET /api/delete/:id
+    if (req.method === "GET" && req.url.includes("delete")) {
+      const parts = req.url.split("/");
+      const id = parts[3];
+
+      await Todo.findByIdAndDelete(id);
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(404).json({ error: "Ruta no encontrada" });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
-});
-
-// 📌 Agregar tarea
-app.post("/add", async (req, res) => {
-  try {
-    await connectDB();
-    const todo = new Todo({
-      texto: req.body.texto,
-      complete: false
-    });
-
-    await todo.save();
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 📌 Cambiar estado
-app.get("/complete/:id/:estado", async (req, res) => {
-  try {
-    await connectDB();
-    await Todo.findByIdAndUpdate(req.params.id, {
-      complete: req.params.estado === "true"
-    });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 📌 Eliminar tarea
-app.get("/delete/:id", async (req, res) => {
-  try {
-    await connectDB();
-    await Todo.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-export default app;
+}
