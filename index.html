@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CRUD</title>
+</head>
+<body>
+
+<h1>Lista de tareas</h1>
+
+<form action="/add" method="POST">
+    <input type="text" name="texto" placeholder="Nueva tarea" required>
+    <button type="submit">Agregar</button>
+</form>
+
+<ul id="lista"></ul>
+
+<script>
+async function cargarTareas() {
+    const res = await fetch('/getAll');
+    const data = await res.json();
+
+    const lista = document.getElementById('lista');
+    lista.innerHTML = '';
+
+    data.data.forEach(t => {
+        lista.innerHTML += `
+            <li>
+                ${t.texto} - ${t.complete ? '✔️' : '❌'}
+                <a href="/complete/${t._id}/${!t.complete}">Cambiar</a>
+                <a href="/delete/${t._id}">Eliminar</a>
+            </li>
+        `;
+    });
+}
+
+cargarTareas();
+</script>
+
+</body>
+</html>
