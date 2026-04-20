@@ -14,9 +14,7 @@ async function connectDB() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(process.env.MONGO_URI).then((mongoose) => {
-      return mongoose;
-    });
+    cached.promise = mongoose.connect(process.env.MONGO_URI);
   }
 
   cached.conn = await cached.promise;
@@ -42,6 +40,7 @@ export default async function handler(req, res) {
     if (req.method === "POST") {
       let body = req.body;
 
+      // FIX importante para Vercel
       if (typeof body === "string") {
         body = JSON.parse(body);
       }
@@ -55,7 +54,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    return res.status(404).json({ error: "Ruta no encontrada" });
+    return res.status(405).json({ error: "Método no permitido" });
 
   } catch (error) {
     console.error("ERROR REAL:", error);

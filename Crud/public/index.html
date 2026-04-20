@@ -7,8 +7,8 @@
 
 <h1>Lista de tareas</h1>
 
-<form action="/api/add" method="POST">
-    <input type="text" name="texto" placeholder="Nueva tarea" required>
+<form id="form">
+    <input type="text" id="texto" placeholder="Nueva tarea" required>
     <button type="submit">Agregar</button>
 </form>
 
@@ -16,7 +16,7 @@
 
 <script>
 async function cargarTareas() {
-    const res = await fetch('/api/getAll');
+    const res = await fetch('/api/todos');
     const data = await res.json();
 
     const lista = document.getElementById('lista');
@@ -30,6 +30,22 @@ async function cargarTareas() {
         `;
     });
 }
+
+document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const texto = document.getElementById('texto').value;
+
+    await fetch('/api/todos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ texto })
+    });
+
+    cargarTareas();
+});
 
 cargarTareas();
 </script>
