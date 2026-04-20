@@ -1,15 +1,18 @@
 import mongoose from "mongoose";
 
-// conexión global
 let isConnected = false;
 
 async function connectDB() {
   if (isConnected) return;
+
+  if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI no definido");
+  }
+
   await mongoose.connect(process.env.MONGO_URI);
   isConnected = true;
 }
 
-// modelo
 const TodoSchema = new mongoose.Schema({
   texto: String,
   complete: Boolean
@@ -17,10 +20,13 @@ const TodoSchema = new mongoose.Schema({
 
 const Todo = mongoose.models.Todo || mongoose.model("Todo", TodoSchema);
 
-// handler principal (Vercel)
 export default async function handler(req, res) {
   try {
     await connectDB();
+
+    // 🔍 DEBUG (para ver si entra)
+    console.log("METHOD:", req.method);
+    console.log("URL:", req.url);
 
     // GET /api/getAll
     if (req.method === "GET" && req.url.includes("getAll")) {
@@ -30,8 +36,18 @@ export default async function handler(req, res) {
 
     // POST /api/add
     if (req.method === "POST" && req.url.includes("add")) {
-      const { texto } = req.body;
-      const todo = new Todo({ texto, complete: false });
+      let body = req.body;
+
+      // 🔥 FIX VERCEL (a veces viene como string)
+      if (typeof body === "string") {
+        body = JSON.parse(body);
+      }
+
+      const todo = new Todo({
+        texto: body.texto,
+        complete: false
+      });
+
       await todo.save();
       return res.status(200).json({ success: true });
     }
@@ -61,6 +77,7 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: "Ruta no encontrada" });
 
   } catch (error) {
+    console.error("ERROR:", error);
     return res.status(500).json({ error: error.message });
   }
 }
